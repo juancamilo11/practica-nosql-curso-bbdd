@@ -1,0 +1,139 @@
+version: '3.7'
+
+volumes:
+  redis_data:
+    driver: local
+  mongodb_data:
+    driver: local
+
+  # mongo-primary-data:
+  #   driver: local
+  # mongo-secondary-1-data:
+  #   driver: local
+  # mongo-secondary-2-data:
+  #   driver: local
+
+networks:
+  practica_nosql_network:
+    driver: bridge
+    name: practica_nosql_network
+
+services:
+  redis:
+    image: redis
+    container_name: my_redis_db
+    restart: always
+    environment:
+      TZ: America/Bogota
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6380:6379'
+    networks:
+      - practica_nosql_network
+    # deploy:
+    #   replicas: 1
+    #   resources:
+    #     limits:
+    #       cpus: "0.75"
+    #       memory: "1024M"
+
+  mongo:
+    image: mongo
+    container_name: my_mongo_db
+    restart: always
+    environment:
+      TZ: America/Bogota
+      MONGO_INITDB_DATABASE: practica_nosql_db
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - '27018:27017'
+    networks:
+      - practica_nosql_network
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # mongo1:
+  #   image: mongo
+  #   container_name: mongo1
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - ./data1:/data/db
+  #   networks:
+  #     - mongo-cluster
+
+  # mongo2:
+  #   image: mongo
+  #   container_name: mongo2
+  #   ports:
+  #     - "27018:27017"
+  #   volumes:
+  #     - ./data2:/data/db
+  #   networks:
+  #     - mongo-cluster
+
+  # mongo3:
+  #   image: mongo
+  #   container_name: mongo3
+  #   ports:
+  #     - "27019:27017"
+  #   volumes:
+  #     - ./data3:/data/db
+  #   networks:
+  #     - mongo-cluster
+
+  # mongo-express:
+  #   container_name: mongo-express
+  #   image: mongo-express
+  #   restart: always
+  #   ports:
+  #     - "8082:8081"
+  #   environment:
+  #     ME_CONFIG_MONGODB_URL: mongodb://my_mongo_db:27018/
+  #   depends_on:
+  #     # - mongo
+  #   networks:
+  #     - practica_nosql_network
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: "256M"
+
+  practica-nosql-server:
+    container_name: practica-nosql-server
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    restart: always
+    ports:
+      - '7000:7000'
+    networks:
+      - practica_nosql_network
+    depends_on:
+      - redis
+      - mongo
+    environment:
+      # APPLICATION
+      - APP_PORT=7000
+      - APP_NAME=practica-nosql-bbdd
+      # DATABASE
+      - DATABASE_URI=mongodb://my_mongodb_db:27018/practica_nosql_db?appName=practica-nosql-bbdd&retryWrites=true&w=majority&maxIdleTimeMS=1000&ssl=false
+      # REDIS
+      - REDIS_PRODUCTS_DB_URL=redis://my_redis_db:6380/0
+      - REDIS_PRODUCTS_DB_NAME=products_db
+      - REDIS_SESSIONS_DB_URL=redis://my_redis_db:6380/1
+      - REDIS_SESSIONS_DB_NAME=sessions_db
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: '256M'

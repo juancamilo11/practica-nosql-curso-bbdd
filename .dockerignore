@@ -1,0 +1,9 @@
+generated/
+docs/
+node_modules/
+dist/
+
+.eslintrc.js
+.gitignore
+
+README.md
